@@ -6,19 +6,18 @@ extern crate vecmath;
 extern crate rand;
 
 use glutin_window::GlutinWindow as Window;
-use graphics::{circle_arc, rectangle, color, CircleArc};
+use graphics::{rectangle, color};
 use opengl_graphics::{GlGraphics, OpenGL};
 use piston::event_loop::{EventSettings, Events};
 use piston::input::{RenderArgs, RenderEvent, UpdateArgs, UpdateEvent};
 use piston::window::WindowSettings;
 use vecmath::*;
-use rand::*;
 
 
 const HEIGHT: u32 = 1000;
 const WIDTH: u32 = 1000;
-const MAX_FORCE: f64 = 0.01;
-const MAX_SPEED: f64 =1.0;
+const MAX_FORCE: f64 = 0.11;
+const MAX_SPEED: f64 =1.5;
 const PERCEPTION: f64 = 50.0;
 
 #[derive(Clone, Copy)]
@@ -26,23 +25,23 @@ struct Boid {
     location: Vector2<f64>,
     velocity: Vector2<f64>,
     acceleration: Vector2<f64>,
-    test: Vector2<f64>
+    vector: Vector2<f64>
 }
 
 
-pub fn limitMag(vector: Vector2<f64>, limiter: f64) -> Vector2<f64>{
-    if(vec2_len(vector) > limiter){
+pub fn limit_mag(vector: Vector2<f64>, limiter: f64) -> Vector2<f64>{
+    if vec2_len(vector) > limiter {
         return vec2_scale(vec2_normalized(vector), limiter);
     }
     return vector;
 }
 
-pub fn setMag(vector: Vector2<f64>, mag: f64) -> Vector2<f64>{
-    let mut newVec = vector;
+pub fn set_mag(vector: Vector2<f64>, mag: f64) -> Vector2<f64>{
+    let mut new_vec = vector;
     let magg = vec2_len(vector);
-    newVec[0] = newVec[0]*(mag/magg);
-    newVec[1] = newVec[1]*(mag/magg);
-    return newVec;
+    new_vec[0] = new_vec[0]*(mag/magg);
+    new_vec[1] = new_vec[1]*(mag/magg);
+    return new_vec;
 
 }
 
@@ -70,9 +69,9 @@ impl Boid {
         }
         if total > 0{
             avg = vec2_scale(avg, 1.0/(total as f64));
-            avg = setMag(avg, MAX_SPEED);
+            avg = set_mag(avg, MAX_SPEED);
             avg = vec2_sub(avg, self.velocity);
-            avg = limitMag(avg, MAX_FORCE);
+            avg = limit_mag(avg, MAX_FORCE);
             
             return avg;
         }
@@ -97,9 +96,9 @@ impl Boid {
             self.test = avg;
             avg = vec2_sub(avg, self.location);
             
-            avg = setMag(avg, MAX_SPEED);
+            avg = set_mag(avg, MAX_SPEED);
             avg = vec2_sub(avg, self.velocity);
-            avg = limitMag(avg, MAX_FORCE);
+            avg = limit_mag(avg, MAX_FORCE);
             //println!("Distance: {}, avg: {}", vec2_len(vec2_sub(self.location, self.test)), vec2_len(avg));
             return avg;
         }
@@ -124,9 +123,9 @@ impl Boid {
         if total > 0{
             avg = vec2_scale(avg, 1.0/(total as f64));
             self.test = avg;
-            avg = setMag(avg, MAX_SPEED);
+            avg = set_mag(avg, MAX_SPEED);
             avg = vec2_sub(avg, self.velocity);
-            avg = limitMag(avg, MAX_FORCE);
+            avg = limit_mag(avg, MAX_FORCE);
             //println!("Distance: {}, avg: {}", vec2_len(vec2_sub(self.location, self.test)), vec2_len(avg));
             return avg;
         }
@@ -144,11 +143,12 @@ impl Boid {
         let mut seperation = self.seperation(boids);
 
 
-        seperation = vec2_scale(seperation, 0.9);
+        seperation = vec2_scale(seperation, 0.90);
 
         self.acceleration = vec2_add(cohesion, self.acceleration);
         self.acceleration = vec2_add(self.acceleration, alignment);
         self.acceleration = vec2_add(self.acceleration, seperation);
+        self.vector = self.acceleration;
 
         //self.acceleration = cohesion;
     }
@@ -157,7 +157,7 @@ impl Boid {
         self.flock(boids);
         self.location = vec2_add(self.location, self.velocity);
         self.velocity = vec2_add(self.velocity, self.acceleration);
-        self.velocity = limitMag(self.velocity, MAX_SPEED);
+        self.velocity = limit_mag(self.velocity, MAX_SPEED);
         //println!("{}", self.velocity[0]);
         if self.location[0] > WIDTH as f64 {
             self.location[0] = 0.0;
@@ -175,25 +175,21 @@ impl Boid {
 }
 
 pub struct App {
-    gl: GlGraphics, // OpenGL drawing backend.
-    rotation: f64,  // Rotation for the square.
+    gl: GlGraphics, // OpenGL drawing backend.  // Rotation for the square.
     boids: Vec<Boid>
 }
 
 impl App {
     fn render(&mut self, args: &RenderArgs) {
         use graphics::*;
-
-        const GREEN: [f32; 4] = [0.0, 1.0, 0.0, 1.0];
-        const RED: [f32; 4] = [1.0, 0.0, 0.0, 1.0];
         let boids = &self.boids;
         self.gl.draw(args.viewport(), |c, gl| {
             // Clear the screen.
-            clear(GREEN, gl);
+            clear(color::BLACK, gl);
             // Draw a box rotating around the middle of the screen.
             for boid in boids {
                 let transform = c.transform.trans(boid.location[0], boid.location[1]);
-                rectangle(RED, boid.rect(), transform, gl)
+                rectangle(color::WHITE, boid.rect(), transform, gl)
             }
         });
     }
@@ -208,9 +204,6 @@ impl App {
 }
 
 fn main() {
-    let test: Vector2<f64> = [5.0,5.0];
-    println!("{}", vec2_len(test));
-    println!("{}", vec2_len(setMag(test, 10.0)));
     // Change this to OpenGL::V2_1 if not working.
     let opengl = OpenGL::V3_2;
 
@@ -224,13 +217,12 @@ fn main() {
     // Create a new game and run it.
 
     let mut boid_box: Vec<Boid> = vec![];
-    for i in 0..200{
+    for i in 0..300{
         boid_box.push(Boid::new())
     }
 
     let mut app = App {
         gl: GlGraphics::new(opengl),
-        rotation: 0.0,
         boids: boid_box,
     };
 
