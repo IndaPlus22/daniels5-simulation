@@ -17,7 +17,7 @@ use vecmath::*;
 const HEIGHT: u32 = 1000;
 const WIDTH: u32 = 1500;
 const MAX_FORCE: f64 = 0.09;
-const MAX_SPEED: f64 =1.5;
+const MAX_SPEED: f64 =2.5;
 const PERCEPTION: f64 = 50.0;
 
 
